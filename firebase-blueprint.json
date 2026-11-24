@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "UserPrivateProfile": {
+      "title": "UserPrivateProfile",
+      "description": "Private user account profile containing PII isolated under user-only private subcollection.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified user email address.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Google account display name.",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "email", "displayName", "createdAt", "updatedAt"]
+    },
+    "HandConfig": {
+      "title": "HandConfig",
+      "description": "Saved custom 3D hand model, texture, orientation, and brightness configuration. Once locked is true, only brightness may be updated.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "When true, model, texture, tint, scale, and rotation are permanently locked; only brightness remains editable."
+        },
+        "target": {
+          "type": "string",
+          "description": "Target hand slot.",
+          "enum": ["both", "left", "right"]
+        },
+        "ext": {
+          "type": "string",
+          "description": "3D model file extension.",
+          "enum": ["glb", "gltf", "obj", "fbx", "stl"],
+          "maxLength": 8
+        },
+        "modelId": {
+          "type": "string",
+          "description": "UUID referencing the stored 3D hand model asset.",
+          "minLength": 8,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9-]{8,36}$"
+        },
+        "textureId": {
+          "type": "string",
+          "description": "UUID referencing the stored hand texture image, or empty string if none.",
+          "minLength": 0,
+          "maxLength": 64,
+          "pattern": "^([a-f0-9-]{8,36})?$"
+        },
+        "hasTexture": {
+          "type": "boolean",
+          "description": "Whether a custom image texture is attached."
+        },
+        "baseTintColor": {
+          "type": "string",
+          "description": "Frozen base hex color from the color wheel.",
+          "minLength": 7,
+          "maxLength": 7,
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "brightness": {
+          "type": "number",
+          "description": "Mutable hand brightness multiplier between 0.1 and 1.5."
+        },
+        "flipTextureY": {
+          "type": "boolean",
+          "description": "Whether UV vertical texture flip is enabled."
+        },
+        "scale": {
+          "type": "number",
+          "description": "Hand model scale multiplier between 0.25 and 3.0."
+        },
+        "rotX": {
+          "type": "number",
+          "description": "Euler X rotation in radians."
+        },
+        "rotY": {
+          "type": "number",
+          "description": "Euler Y rotation in radians."
+        },
+        "rotZ": {
+          "type": "number",
+          "description": "Euler Z rotation in radians."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "locked",
+        "target",
+        "ext",
+        "modelId",
+        "textureId",
+        "hasTexture",
+        "baseTintColor",
+        "brightness",
+        "flipTextureY",
+        "scale",
+        "rotX",
+        "rotY",
+        "rotZ",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/private/{profileId}": {
+      "schema": {
+        "$ref": "#/entities/UserPrivateProfile"
+      },
+      "description": "Owner-only private user profile storing PII separately from game configs."
+    },
+    "/handConfigs/{userId}": {
+      "schema": {
+        "$ref": "#/entities/HandConfig"
+      },
+      "description": "Per-user custom 3D hand configuration and immutable lock state."
+    }
+  }
+}

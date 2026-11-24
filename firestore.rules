@@ -1,0 +1,155 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidUserPrivateProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid.size() > 0
+        && data.uid.size() <= 128
+        && data.uid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.uid == request.auth.uid
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.displayName is string
+        && data.displayName.size() <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHandConfig(data) {
+      return data.keys().hasAll([
+          'ownerId', 'locked', 'target', 'ext', 'modelId', 'textureId',
+          'hasTexture', 'baseTintColor', 'brightness', 'flipTextureY',
+          'scale', 'rotX', 'rotY', 'rotZ', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'locked', 'target', 'ext', 'modelId', 'textureId',
+          'hasTexture', 'baseTintColor', 'brightness', 'flipTextureY',
+          'scale', 'rotX', 'rotY', 'rotZ', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() > 0
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.locked is bool
+        && data.target is string
+        && data.target.size() <= 8
+        && data.target in ['both', 'left', 'right']
+        && data.ext is string
+        && data.ext.size() <= 8
+        && data.ext in ['glb', 'gltf', 'obj', 'fbx', 'stl']
+        && data.modelId is string
+        && data.modelId.size() >= 8
+        && data.modelId.size() <= 64
+        && data.modelId.matches('^[a-f0-9-]{8,36}$')
+        && data.textureId is string
+        && data.textureId.size() <= 64
+        && data.textureId.matches('^([a-f0-9-]{8,36})?$')
+        && data.hasTexture is bool
+        && data.baseTintColor is string
+        && data.baseTintColor.size() == 7
+        && data.baseTintColor.matches('^#[0-9a-fA-F]{6}$')
+        && data.brightness is number
+        && data.brightness >= 0.1
+        && data.brightness <= 1.5
+        && data.flipTextureY is bool
+        && data.scale is number
+        && data.scale >= 0.25
+        && data.scale <= 3.0
+        && data.rotX is number
+        && data.rotX >= -6.3
+        && data.rotX <= 6.3
+        && data.rotY is number
+        && data.rotY >= -6.3
+        && data.rotY <= 6.3
+        && data.rotZ is number
+        && data.rotZ >= -6.3
+        && data.rotZ <= 6.3
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId}/private/{profileId} {
+      allow get: if isValidId(userId) && isValidId(profileId) && profileId == 'profile' && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isValidId(profileId)
+        && profileId == 'profile'
+        && isOwner(userId)
+        && isValidUserPrivateProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isValidId(profileId)
+        && profileId == 'profile'
+        && isValidUserPrivateProfile(incoming())
+        && isOwner(userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /handConfigs/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidHandConfig(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isValidHandConfig(incoming())
+        && isOwner(userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().locked == false && incoming().diff(existing()).affectedKeys().hasOnly([
+            'locked', 'target', 'ext', 'modelId', 'textureId', 'hasTexture',
+            'baseTintColor', 'brightness', 'flipTextureY', 'scale',
+            'rotX', 'rotY', 'rotZ', 'updatedAt'
+          ]))
+          ||
+          (existing().locked == true
+            && incoming().locked == true
+            && incoming().diff(existing()).affectedKeys().hasOnly(['brightness', 'updatedAt']))
+        );
+      allow delete: if isValidId(userId) && isOwner(userId) && existing().locked == false;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "GameZip Workbench",
+  "description": "Import, inspect, playtest, and mount game archives into a live development workspace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
